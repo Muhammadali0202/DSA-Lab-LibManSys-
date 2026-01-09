@@ -17,13 +17,16 @@ private:
     void update();
     void render();
     void cleanup();
+    
+    // Helper for custom styles
+    void applyTheme();
 
     GLFWwindow* window;
     Library library;
     
-    // Window settings
-    const int windowWidth = 1000;
-    const int windowHeight = 700;
+    // Window settings - Increased default size
+    const int windowWidth = 1280;
+    const int windowHeight = 720;
 };
 
 #endif
