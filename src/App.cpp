@@ -105,14 +105,13 @@ void App::update()
     static int quantity = 1;
     static int bookId = 1;
     static int searchId = 0;
-    static std::string statusMessage = ""; // For showing status without popups
+    static std::string statusMessage = ""; 
 
     // --- SETUP FULL SCREEN WINDOW ---
     ImGuiViewport* viewport = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(viewport->Pos);
     ImGui::SetNextWindowSize(viewport->Size);
     
-    // Flags to make it look like a background application, not a window
     ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | 
                                     ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | 
                                     ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
@@ -125,7 +124,6 @@ void App::update()
     ImGui::Spacing();
 
     // --- LEFT PANEL (CONTROLS) ---
-    // Calculate width: 30% of screen for controls, 70% for table
     float leftPanelWidth = ImGui::GetContentRegionAvail().x * 0.3f;
     
     ImGui::BeginChild("LeftPanel", ImVec2(leftPanelWidth, 0), true);
@@ -146,7 +144,7 @@ void App::update()
     ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(0.33f, 0.6f, 0.6f));
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(0.33f, 0.7f, 0.7f));
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(0.33f, 0.8f, 0.8f));
-    if (ImGui::Button("Add Book to Library", ImVec2(-FLT_MIN, 40))) { // -FLT_MIN makes it full width
+    if (ImGui::Button("Add Book to Library", ImVec2(-FLT_MIN, 40))) { 
         if (strlen(titleBuf) > 0 && strlen(authorBuf) > 0) {
             library.addBook({bookId, std::string(titleBuf), std::string(authorBuf), quantity});
             statusMessage = "Added: " + std::string(titleBuf);
@@ -171,7 +169,6 @@ void App::update()
     ImGui::InputInt("Target ID", &searchId);
     ImGui::Spacing();
     
-    // Two buttons on same line
     float btnWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) / 2.0f;
     
     // Blue Button for Search
@@ -180,8 +177,11 @@ void App::update()
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(0.6f, 0.8f, 0.8f));
     if (ImGui::Button("Find Book", ImVec2(btnWidth, 35))) {
         Book* found = library.findBook(searchId);
-        if (found) ImGui::OpenPopup("Book Found");
-        else ImGui::OpenPopup("Not Found");
+        if (found) {
+            ImGui::OpenPopup("Book Found");
+        } else {
+            ImGui::OpenPopup("Not Found");
+        }
     }
     ImGui::PopStyleColor(3);
 
@@ -194,66 +194,28 @@ void App::update()
     if (ImGui::Button("Remove Book", ImVec2(btnWidth, 35))) {
         if (library.removeBook(searchId)) {
             statusMessage = "Removed Book ID: " + std::to_string(searchId);
+            ImGui::OpenPopup("Removed");
         } else {
             ImGui::OpenPopup("Not Found");
         }
     }
     ImGui::PopStyleColor(3);
 
-    // Status Message Display at bottom of left panel
+    // Status Message
     if (!statusMessage.empty()) {
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Status: %s", statusMessage.c_str());
     }
     
-    // Exit Button at very bottom
+    // Exit Button
     ImGui::SetCursorPosY(ImGui::GetWindowHeight() - 50);
     if (ImGui::Button("Exit Application", ImVec2(-FLT_MIN, 30))) {
         glfwSetWindowShouldClose(window, true);
     }
 
-    ImGui::EndChild(); // End Left Panel
-
-    ImGui::SameLine(); // Move to the right of the left panel
-
-    // --- RIGHT PANEL (TABLE) ---
-    ImGui::BeginChild("RightPanel", ImVec2(0, 0), true); // 0,0 means fill remaining space
-    
-    ImGui::Text("Current Inventory");
-    
-    // Table Setup: Borders, Row Colors, Scrollable, Resizable columns
-    ImGuiTableFlags tableFlags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | 
-                                 ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY | 
-                                 ImGuiTableFlags_SizingStretchProp;
-                                 
-    if (ImGui::BeginTable("InventoryTable", 4, tableFlags)) {
-        // Headers
-        ImGui::TableSetupColumn("ID", ImGuiTableColumnFlags_WidthFixed, 50.0f);
-        ImGui::TableSetupColumn("Title");
-        ImGui::TableSetupColumn("Author");
-        ImGui::TableSetupColumn("Qty", ImGuiTableColumnFlags_WidthFixed, 50.0f);
-        ImGui::TableHeadersRow();
-        
-        // Data Rows
-        for (const auto& book : library.getBooks()) {
-            ImGui::TableNextRow();
-            ImGui::TableNextColumn();
-            ImGui::Text("%d", book.id);
-            ImGui::TableNextColumn();
-            ImGui::Text("%s", book.title.c_str());
-            ImGui::TableNextColumn();
-            ImGui::Text("%s", book.author.c_str());
-            ImGui::TableNextColumn();
-            ImGui::Text("%d", book.quantity);
-        }
-        
-        ImGui::EndTable();
-    }
-    
-    ImGui::EndChild(); // End Right Panel
-
-    // --- MODALS / POPUPS ---
+    // --- POPUPS (NOW INSIDE THE LEFT PANEL SCOPE) ---
+    // These must be here to "see" the OpenPopup calls made by the buttons above
     
     if (ImGui::BeginPopupModal("Error", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::Text("Title and Author cannot be empty!");
@@ -285,6 +247,51 @@ void App::update()
         ImGui::EndPopup();
     }
 
+    if (ImGui::BeginPopupModal("Removed", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Success");
+        ImGui::Text("Book removed successfully.");
+        ImGui::Separator();
+        if (ImGui::Button("OK", ImVec2(120, 0))) ImGui::CloseCurrentPopup();
+        ImGui::EndPopup();
+    }
+
+    ImGui::EndChild(); // End Left Panel
+
+    ImGui::SameLine(); // Move to the right
+
+    // --- RIGHT PANEL (TABLE) ---
+    ImGui::BeginChild("RightPanel", ImVec2(0, 0), true);
+    
+    ImGui::Text("Current Inventory");
+    
+    ImGuiTableFlags tableFlags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | 
+                                 ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY | 
+                                 ImGuiTableFlags_SizingStretchProp;
+                                 
+    if (ImGui::BeginTable("InventoryTable", 4, tableFlags)) {
+        ImGui::TableSetupColumn("ID", ImGuiTableColumnFlags_WidthFixed, 50.0f);
+        ImGui::TableSetupColumn("Title");
+        ImGui::TableSetupColumn("Author");
+        ImGui::TableSetupColumn("Qty", ImGuiTableColumnFlags_WidthFixed, 50.0f);
+        ImGui::TableHeadersRow();
+        
+        for (const auto& book : library.getBooks()) {
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            ImGui::Text("%d", book.id);
+            ImGui::TableNextColumn();
+            ImGui::Text("%s", book.title.c_str());
+            ImGui::TableNextColumn();
+            ImGui::Text("%s", book.author.c_str());
+            ImGui::TableNextColumn();
+            ImGui::Text("%d", book.quantity);
+        }
+        
+        ImGui::EndTable();
+    }
+    
+    ImGui::EndChild(); // End Right Panel
+
     ImGui::End(); // End Main Window
 }
 
@@ -295,7 +302,6 @@ void App::render()
     int display_w, display_h;
     glfwGetFramebufferSize(window, &display_w, &display_h);
     glViewport(0, 0, display_w, display_h);
-    // Dark grey background for OpenGL
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
     
